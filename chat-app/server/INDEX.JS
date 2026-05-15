@@ -1,18 +1,20 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 
+const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
+
 const app = express();
-app.use(cors({ origin: '*' }));
+app.use(cors({ origin: CORS_ORIGIN }));
 
 const server = http.createServer(app);
 
 const io = new Server(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] }
+  cors: { origin: CORS_ORIGIN, methods: ['GET', 'POST'] }
 });
 
-// ─── Message History (in-memory, per room) ────────────────────────────────────
 const messageHistory = {};
 const MAX_HISTORY = 50;
 
@@ -24,7 +26,6 @@ function addToHistory(room, msgObj) {
   }
 }
 
-// ─── Online Users (per room) ──────────────────────────────────────────────────
 const rooms = {};
 
 io.on('connection', (socket) => {
@@ -36,6 +37,7 @@ io.on('connection', (socket) => {
     socket.room = room;
 
     if (!rooms[room]) rooms[room] = [];
+    rooms[room] = rooms[room].filter(u => u.id !== socket.id);
     rooms[room].push({ id: socket.id, username });
 
     const history = messageHistory[room] || [];
@@ -51,6 +53,23 @@ io.on('connection', (socket) => {
     };
     addToHistory(room, joinMsg);
     io.to(room).emit('receive_message', joinMsg);
+  });
+
+  socket.on('leave_room', ({ username, room }) => {
+    socket.leave(room);
+    if (rooms[room]) {
+      rooms[room] = rooms[room].filter(u => u.id !== socket.id);
+      io.to(room).emit('user_list', rooms[room]);
+
+      const leaveMsg = {
+        username: 'System',
+        message: `${username} left #${room}`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: 'system'
+      };
+      addToHistory(room, leaveMsg);
+      io.to(room).emit('receive_message', leaveMsg);
+    }
   });
 
   socket.on('send_message', ({ room, message }) => {
@@ -73,24 +92,27 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    const room = socket.room;
-    if (room && rooms[room]) {
-      rooms[room] = rooms[room].filter(u => u.id !== socket.id);
-      io.to(room).emit('user_list', rooms[room]);
+    for (const room of Object.keys(rooms)) {
+      const userIndex = rooms[room].findIndex(u => u.id === socket.id);
+      if (userIndex !== -1) {
+        rooms[room].splice(userIndex, 1);
+        io.to(room).emit('user_list', rooms[room]);
 
-      const leaveMsg = {
-        username: 'System',
-        message: `${socket.username} left the room`,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        type: 'system'
-      };
-      addToHistory(room, leaveMsg);
-      io.to(room).emit('receive_message', leaveMsg);
+        const leaveMsg = {
+          username: 'System',
+          message: `${socket.username || 'Unknown'} left the room`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          type: 'system'
+        };
+        addToHistory(room, leaveMsg);
+        io.to(room).emit('receive_message', leaveMsg);
+      }
     }
     console.log(`[-] User disconnected: ${socket.id}`);
   });
 });
 
-server.listen(3001, () => {
-  console.log('✅ Server running on http://localhost:3001');
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
