@@ -1,6 +1,26 @@
-# ChatRoom
+# 💬 ChatRoom
+
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![Express](https://img.shields.io/badge/Express-4-black?logo=express)
+![Socket.IO](https://img.shields.io/badge/Socket.IO-4-010101?logo=socket.io)
 
 Real-time chat application with rooms, typing indicators, and online user tracking. Built with React, Express, and Socket.IO.
+
+<!-- Add a screenshot or GIF of the chat UI here -->
+
+## Features
+
+- 💬 Room-based chat (general, tech-talk, random, announcements)
+- ⚡ Real-time messaging via Socket.IO
+- ⌨️ Typing indicators
+- 🟢 Online user list per room
+- 🕘 Message history (last 50 messages per room)
+- 🎨 Color-coded user avatars
+
+## Tech Stack
+
+**Client:** React, Socket.IO client
+**Server:** Node.js, Express, Socket.IO, CORS
 
 ## Prerequisites
 
@@ -77,11 +97,10 @@ To expose the chat app over the internet:
 
 Users on the same network or internet can connect by opening the client in their browser.
 
-## Features
+## Project Structure
 
-- Room-based chat (general, tech-talk, random, announcements)
-- Real-time messaging via Socket.IO
-- Typing indicators
-- Online user list per room
-- Message history (last 50 messages per room)
-- Color-coded user avatars
+```
+chat-app/
+├── client/   React frontend (Create React App)
+└── server/   Express + Socket.IO backend
+```
